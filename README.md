@@ -9,10 +9,10 @@ The Radar View project is a Python-based visualization tool designed to display 
 - **Customizable Settings**: Adjust display parameters like range, colors, and data filters.
 - **Lightweight and Fast**: Built for performance using Python and lightweight libraries.
 
-##Join Our Discord Server for Anouncments, Bug Reports, and Future Requests
+## Join Our Discord Server for Anouncments, Bug Reports, and Future Requests
 **https://discord.gg/sXjhErYd**
 
 ## Installation
 
 **Download The Installer**:
-- **https://github.com/EthanMali/RadarView/releases**
+**https://github.com/EthanMali/RadarView/releases**
