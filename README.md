@@ -1,7 +1,6 @@
 # Radar View Project
 
-The Radar View project is a Python-based visualization tool designed to display and analyze radar data in a clean and interactive manner. This project is perfect for applications like drone navigation, object detection, or general radar data visualization.
-
+The Radar View project is a Python-based visualization tool designed to display and analyze radar data in a clean and interactive manner.
 ## Features
 
 - **Real-time Data Display**: Visualize radar data in real-time.
