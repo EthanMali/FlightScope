@@ -2,42 +2,123 @@ import sys
 import requests
 import math
 import json
-from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QVBoxLayout, QComboBox, QPushButton, QLabel, QMessageBox, QFileDialog
-from PyQt5.QtGui import QPainter, QColor, QPen, QFont, QBrush
-from PyQt5.QtCore import Qt, QPointF, QTimer, QThread, pyqtSignal, QRectF
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtNetwork import QNetworkRequest, QNetworkAccessManager
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QVBoxLayout, QComboBox, QPushButton, QLabel, QMessageBox, QWidget, QHBoxLayout
+from PyQt5.QtGui import QPainter, QColor, QPen, QFont, QPixmap, QFontDatabase
+from PyQt5.QtCore import Qt, QPointF, QTimer, QThread, pyqtSignal
 import os
 from collections import deque
 
-
-# Dialog to select TRACON
 class TraconSelectionDialog(QDialog):
     def __init__(self, tracon_names, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Select TRACON")
-        self.setFixedSize(300, 150)
-        
-        layout = QVBoxLayout(self)
 
-        self.label = QLabel("Select a TRACON to load:", self)
-        layout.addWidget(self.label)
-        
-        self.comboBox = QComboBox(self)
-        self.comboBox.addItems(tracon_names)  # Add TRACON names to the combo box
-        layout.addWidget(self.comboBox)
-        
-        self.ok_button = QPushButton("OK", self)
+        # Set the window size and make it center-aligned
+        self.setFixedSize(1000, 800)
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)  # No borders
+        self.pixmap = QPixmap('C:/Users/abbym/Documents/RadarView/Resources/pics/launch-background.png')
+
+
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignCenter)  # Center the entire layout
+
+        # Centered container for the selection box
+        container = QWidget(self)
+        container.setStyleSheet("background-color: rgba(61, 61, 61, 0.8); border-radius: 10px; padding: 20px;")
+        container_layout = QVBoxLayout(container)
+
+        # Label with sleek modern style
+        self.label = QLabel("Select a TRACON to load:", container)
+        container_layout.addWidget(self.label)
+
+        self.label.setStyleSheet("""
+            font-size: 18px;
+            font-weight: bold;
+            color: #E1E1E1;
+            margin-bottom: 20px;
+            text-align: center;
+        """)
+
+        # ComboBox for TRACON names
+        self.comboBox = QComboBox(container)
+        self.comboBox.addItems(tracon_names)
+        container_layout.addWidget(self.comboBox)
+
+        # Style the comboBox with smooth edges and modern font
+        self.comboBox.setStyleSheet("""
+            QComboBox {
+                background-color: #4C4C4C;
+                font-size: 16px;
+                padding: 10px;
+                border-radius: 8px;
+                border: 1px solid #888;
+                color: #E1E1E1;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #333;
+                color: #E1E1E1;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background-color: #555;
+            }
+        """)
+
+        # Create buttons layout
+        button_layout = QHBoxLayout()
+        container_layout.addLayout(button_layout)
+
+        # OK Button
+        self.ok_button = QPushButton("OK", container)
         self.ok_button.clicked.connect(self.accept)
-        layout.addWidget(self.ok_button)
-        
-        self.cancel_button = QPushButton("Cancel", self)
+        button_layout.addWidget(self.ok_button)
+
+        self.ok_button.setStyleSheet("""
+            QPushButton {
+                background-color:rgb(0, 0, 0);
+                color: white;
+                font-size: 16px;
+                padding: 12px 30px;
+                border-radius: 8px;
+                border: none;
+
+            }
+            QPushButton:hover {
+                background-color:rgb(255, 255, 255);
+                color: black;
+
+            }
+        """)
+
+        # Cancel Button
+        self.cancel_button = QPushButton("Cancel", container)
         self.cancel_button.clicked.connect(self.reject)
-        layout.addWidget(self.cancel_button)
-    
+        button_layout.addWidget(self.cancel_button)
+
+        self.cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color:rgb(134, 134, 134);
+                color: white;
+                font-size: 16px;
+                padding: 12px 30px;
+                border-radius: 8px;
+                border: none;
+            }
+        """)
+
+        layout.addWidget(container)  # Add the container with all elements to the main layout
+
     def get_selected_tracon(self):
         """Return the selected TRACON name."""
         return self.comboBox.currentText()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.drawPixmap(self.rect(), self.pixmap)  # Draw the background image
+        super().paintEvent(event)
+
+
 
 # GeoJson Loader to load GeoJSON data
 class GeoJsonLoader:
@@ -47,7 +128,7 @@ class GeoJsonLoader:
     def load(self, geojson_data):
         self.geojson_data = geojson_data
         # After loading the GeoJSON data
-        print("Loaded GeoJSON data:", geojson_data)
+        #print("Loaded GeoJSON data:", geojson_data)
 
 
     def get_lines(self):
@@ -59,6 +140,15 @@ class GeoJsonLoader:
 class TRACONDisplay(QMainWindow):
     def __init__(self, tracon_config):
         super().__init__()
+
+        self.setCursor(Qt.CrossCursor)
+        # Load the font
+        font_id = QFontDatabase.addApplicationFont("Resources/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf")
+        if font_id == -1:
+            print("Failed to load Roboto Mono font")
+        else:
+            print("Roboto Mono font loaded successfully")
+        self.starsFont = QFont("Roboto Mono", 10)  # Font size 10
 
         # Load TRACON configuration from an external file
         self.tracon_config = self.load_tracon_config(tracon_config)
@@ -88,6 +178,8 @@ class TRACONDisplay(QMainWindow):
 
         # Initialize offset
         self.offset = QPointF(0, 0)  # Initialize the offset for dragging/zooming
+        self.dragging = False
+        
 
         # Set the radar center based on screen geometry
         screen_geometry = self.screen().geometry()
@@ -99,12 +191,13 @@ class TRACONDisplay(QMainWindow):
 
         # Other initialization continues...
 
-        self.aircraft_data = []  # Placeholder for aircraft data
-        
+        self.aircraft_data = []
+        self.highlighted_states = {}        
         # Remove the call to self.load_aircraft_data()
 
         # Initialize the selected TRACON's display
-        self.setWindowTitle(self.tracon_config["tracon_name"])
+        version = "v1.1.0"
+        self.setWindowTitle(f"RadarView {version} :: {self.tracon_config['tracon_name']}")
         self.showMaximized()
 
         # Load GeoJSON for the selected TRACON
@@ -116,12 +209,12 @@ class TRACONDisplay(QMainWindow):
             QMessageBox.critical(self, "Error", f"Failed to load GeoJSON file: {e}")
 
         # Data fetcher setup (use the correct lat, lon, and distance)
-        self.data_fetcher = DataFetcher(self.radar_lat, self.radar_lon, dist=150)  # Example: 150 miles distance
+        self.data_fetcher = DataFetcher(self.radar_lat, self.radar_lon, dist=100)  # Example: 150 miles distance
         self.data_fetcher.data_fetched.connect(self.update_aircraft_data)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.start_fetching_data)
-        self.timer.start(5000)  # Fetch data every 5 seconds
+        self.timer.start(2000)  # Fetch data every 5 seconds
 
         print(f"TRACONDisplay initialized for {self.tracon_config['tracon_name']}.")
 
@@ -185,26 +278,74 @@ class TRACONDisplay(QMainWindow):
         if not self.data_fetcher.isRunning():
             self.data_fetcher.start()
 
-
-    def update_aircraft_data(self, data):
-        """Update the aircraft data and store their positions."""
-        print(f"Updating aircraft data with {len(data)} entries.")  # Debug statement
-        self.aircraft_data = data
+    """def update_aircraft_data(self, new_data):
+        #print(f"Updating aircraft data with {len(data)} entries.")  # Debug statement
+        self.aircraft_data = new_data
 
         # Store the positions in aircraft_positions (keep only the last 8 positions)
-        for aircraft in data:
+        for aircraft in new_data:
             aircraft_id = aircraft.get("flight", "N/A")
             lat = aircraft.get("lat")
             lon = aircraft.get("lon")
 
+            # Debugging to check types of lat and lon
+            #print(f"Aircraft {aircraft_id}: lat={lat} (type: {type(lat)}), lon={lon} (type: {type(lon)})")
+        for aircraft in self.aircraft_data:
+            callsign = aircraft.get("flight")
+            if callsign:
+                self.highlighted_states[callsign] = aircraft.get("highlighted", False)
+
+                # Update aircraft_data
+                self.aircraft_data = new_data
+
+                # Restore highlighted states
+            for aircraft in self.aircraft_data:
+                callsign = aircraft.get("flight")
+                if callsign and callsign in self.highlighted_states:
+                    aircraft["highlighted"] = self.highlighted_states[callsign]
+
+
+            if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+                if aircraft_id not in self.aircraft_positions:
+                    self.aircraft_positions[aircraft_id] = deque(maxlen=8)  # Limit to last 8 positions
+                    # Append the new position to the deque
+                    self.aircraft_positions[aircraft_id].append((lat, lon))
+                else:
+                    print(f"ERROR: Invalid position data for aircraft {aircraft_id} (lat={lat}, lon={lon})")
+
+            self.update()"""
+
+    def update_aircraft_data(self, new_data):
+        """Update the aircraft data and store positions for trails."""
+        self.aircraft_data = new_data
+
+        # Iterate over the new data
+        for aircraft in new_data:
+            aircraft_id = aircraft.get("flight", "N/A")
+            lat = aircraft.get("lat")
+            lon = aircraft.get("lon")
+
+            # Ensure lat and lon are numeric
+            try:
+                lat = float(lat)
+                lon = float(lon)
+            except (ValueError, TypeError):
+                print(f"ERROR: Non-numeric position data for aircraft {aircraft_id} (lat={lat}, lon={lon})")
+                continue  # Skip this aircraft if conversion fails
+
+            # Update position history if valid
             if aircraft_id not in self.aircraft_positions:
-                self.aircraft_positions[aircraft_id] = deque(maxlen=8)  # Limit to the last 8 positions
+                self.aircraft_positions[aircraft_id] = deque(maxlen=8)  # Limit to last 8 positions
+            self.aircraft_positions[aircraft_id].append((lat, lon))
 
-            # Append the new position to the queue
-            if lat is not None and lon is not None:
-                self.aircraft_positions[aircraft_id].append((lat, lon))
+            # Restore highlighted state
+            highlighted = self.highlighted_states.get(aircraft_id, False)
+            aircraft["highlighted"] = highlighted
 
-        self.update()  # Trigger a repaint to draw the new aircraft data and trails
+        # Update radar display
+        self.update()
+
+    
 
 
     def paintEvent(self, event):
@@ -225,20 +366,26 @@ class TRACONDisplay(QMainWindow):
             painter.drawEllipse(self.radar_center + self.offset, i * 80 * self.scale_factor, i * 80 * self.scale_factor)
 
 
-   
     def draw_aircraft(self, painter):
-        """Draw the aircraft and its trail on the radar using QPainter."""
         for aircraft in self.aircraft_data:
             try:
                 lat = aircraft.get("lat")
                 lon = aircraft.get("lon")
                 alt = aircraft.get("alt", 0)  # Default to 0 if 'alt' is not provided
                 callsign = aircraft.get("flight", "N/A")
-                speed = f"{int(aircraft.get('gs', 0))}" if aircraft.get("gs") else "N/A"
+                speed = aircraft.get('gs', 0)
+                if speed != "N/A":
+                    speed = int(speed)
+                else:
+                    speed = 0  # Default speed if 'gs' is unavailable or invalid
+                track = aircraft.get("track", 0)  # Track angle in degrees
+
+                if isinstance(speed, str) and speed.lower() == "ground":
+                    continue  # Skip this aircraft
 
                 # Skip aircraft if altitude is non-numeric or indicates 'ground'
-                if not isinstance(alt, (int, float)) and not alt.isdigit():
-                    continue
+                if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+                    x, y = self.map_to_radar_coords(lat, lon)
 
                 # Convert altitude to integer
                 alt = int(alt)
@@ -259,9 +406,51 @@ class TRACONDisplay(QMainWindow):
                 x = self.radar_center.x() + (x * self.scale_factor) + self.offset.x()
                 y = self.radar_center.y() - (y * self.scale_factor) + self.offset.y()
 
-                # Draw the aircraft as a blue circle
+                # **Prediction Logic:**
+                # Calculate the predicted position in 1 minute
+                predicted_lat, predicted_lon = self.predict_position(lat, lon, track, speed)
+
+                # Map predicted coordinates to radar screen
+                predicted_x, predicted_y = self.map_to_radar_coords(predicted_lat, predicted_lon)
+                predicted_x = self.radar_center.x() + (predicted_x * self.scale_factor) + self.offset.x()
+                predicted_y = self.radar_center.y() - (predicted_y * self.scale_factor) + self.offset.y()
+
+
+                # Calculate leader line endpoint
+                leader_end_x = x  # Vertical line aligns with circle center
+                leader_end_y = y - 20  # Adjust distance above the circle
+
+
+                # Inside your drawing logic for aircraft, check if the aircraft is highlighted
+                highlighted = aircraft.get("highlighted", False)
+
+                # If highlighted, use a different text color
+                if highlighted:
+                    text_color = QColor(10,186,187)  # Blue color for highlighted aircraft
+                else:
+                    text_color = QColor(255, 255, 255)  # White color for non-highlighted aircraft
+
+                painter.setFont(self.starsFont)  # Apply Roboto Mono font
+                painter.setPen(text_color)
+
+                # Draw the leader line
+
+                painter.setPen(text_color)  # White leader line
+                painter.drawLine(QPointF(x, y), QPointF(leader_end_x, leader_end_y))
+
+                # Now draw the text with the appropriate color
+                painter.setPen(text_color)
+                painter.drawText(QPointF(leader_end_x + 5, leader_end_y - 5), callsign)
+                painter.drawText(QPointF(leader_end_x + 5, leader_end_y + 10), f"{alt // 100:03} {speed}")
+
+
+
+                # Draw the line from the blue aircraft dot to the predicted position
+                painter.setPen(QPen(QColor(255, 255, 255), 1))  # White line with thickness 1
+                painter.drawLine(QPointF(x, y), QPointF(predicted_x, predicted_y))  # Line from aircraft to predicted position
+
                 circle_radius = 5
-                painter.setBrush(QColor(31,122,255,255))
+                painter.setBrush(QColor(31, 122, 255, 255))  # Blue color for aircraft
                 painter.setPen(Qt.NoPen)
                 painter.drawEllipse(
                     QPointF(x, y),
@@ -269,12 +458,86 @@ class TRACONDisplay(QMainWindow):
                     circle_radius
                 )
 
-                # Draw altitude and speed near the aircraft
-                painter.setPen(Qt.white)
-                painter.drawText(QPointF(x + 10, y - 10), callsign)
-                painter.drawText(QPointF(x + 10, y + 5), f"{alt // 100:03} {speed}")
+
+
+
             except Exception as e:
                 print(f"Error drawing aircraft: {e}")
+
+    """def draw_aircraft(self, painter):
+        for aircraft in self.aircraft_data:
+            try:
+                # Safely extract latitude and longitude
+                lat = aircraft.get("lat")
+                lon = aircraft.get("lon")
+                callsign = aircraft.get("flight", "N/A")
+                alt = aircraft.get("alt", 0)  # Default to 0 if missing
+                speed = aircraft.get("gs", 0)  # Ground speed
+                track = aircraft.get("track", 0)  # Track angle in degrees
+
+                # Ensure latitude and longitude are valid
+                if lat is None or lon is None or not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+                    print(f"Skipping {callsign}: Invalid coordinates lat={lat}, lon={lon}")
+                    continue
+
+                # Safely parse altitude and speed
+                try:
+                    alt = int(alt)  # Convert altitude to integer
+                except ValueError:
+                    print(f"Skipping {callsign}: Invalid altitude alt={alt}")
+                    continue
+
+                try:
+                    speed = int(speed)  # Convert speed to integer
+                except ValueError:
+                    print(f"Skipping {callsign}: Invalid speed gs={speed}")
+                    speed = 0  # Default to 0 if invalid
+
+                # Skip aircraft above 18,000 feet
+                if alt > 18000:
+                    print(f"Skipping {callsign}: Altitude above 18,000 ft (alt={alt})")
+                    continue
+
+                # Map coordinates to radar screen
+                x, y = self.map_to_radar_coords(lat, lon)
+                x = self.radar_center.x() + (x * self.scale_factor) + self.offset.x()
+                y = self.radar_center.y() - (y * self.scale_factor) + self.offset.y()
+
+                # Draw the aircraft on the radar
+                circle_radius = 5
+                painter.setBrush(QColor(31, 122, 255, 255))  # Blue aircraft marker
+                painter.setPen(Qt.NoPen)
+                painter.drawEllipse(QPointF(x, y), circle_radius, circle_radius)
+
+                # Draw the aircraft's trail
+                self.draw_aircraft_trail(aircraft, painter)
+
+            except Exception as e:
+                print(f"Error drawing aircraft {aircraft.get('flight', 'Unknown')}: {e}")"""
+
+
+                
+    def predict_position(self, lat, lon, track, speed):
+        """Predict the position of the aircraft in 1 minute."""
+        # Convert speed from knots to meters per second (1 knot = 0.514444 m/s)
+        speed_mps = speed * 0.514444
+
+        # Distance traveled in 1 minute
+        distance = speed_mps * 60  # meters
+
+        # Convert track to radians (track is given in degrees)
+        track_rad = math.radians(track)
+
+        # Calculate change in latitude and longitude
+        delta_lat = distance * math.cos(track_rad) / 111320  # 1 degree of latitude is ~111320 meters
+        delta_lon = distance * math.sin(track_rad) / (40008000 / 360) * math.cos(math.radians(lat))  # Degree length varies with latitude
+
+        # Calculate new latitude and longitude
+        predicted_lat = lat + delta_lat
+        predicted_lon = lon + delta_lon
+
+        return predicted_lat, predicted_lon
+
 
 
     def draw_aircraft_trail(self, aircraft, painter):
@@ -306,11 +569,20 @@ class TRACONDisplay(QMainWindow):
 
     def map_to_radar_coords(self, lat, lon):
         """Map latitude and longitude to radar coordinates."""
-        # Get the radar center from the current TRACON config
-        center_lat, center_lon = self.radar_lat, self.radar_lon
+        
+        # Check if lat and lon are not sequences (lists or tuples)
+        if isinstance(lat, (list, tuple)) or isinstance(lon, (list, tuple)):
+            print(f"ERROR: lat or lon is a sequence (lat={lat}, lon={lon})")
+            return 0, 0  # Return early if the values are invalid
+
+        # Ensure lat and lon are floats
+        lat = float(lat)
+        lon = float(lon)
 
         # Calculate distance from radar center
+        center_lat, center_lon = self.radar_lat, self.radar_lon
         distance = self.haversine(center_lat, center_lon, lat, lon)
+
         if distance > 200 * 1609.34:  # Ignore coordinates farther than 200 miles (in meters)
             return 0, 0  # Return a value outside the radar view
 
@@ -348,12 +620,6 @@ class TRACONDisplay(QMainWindow):
         distance = R * c  # Distance in meters
         return distance
     
-    def mousePressEvent(self, event):
-        """Handle mouse press event for dragging."""
-        if event.button() == Qt.LeftButton:
-            self.last_pos = event.pos()
-            self.dragging = True
-
     def mouseMoveEvent(self, event):
         """Handle mouse move event for dragging."""
         if self.dragging:
@@ -394,6 +660,36 @@ class TRACONDisplay(QMainWindow):
 
         self.update()
 
+    def mousePressEvent(self, event):
+        """Handle mouse press event for dragging and CTRL+click interaction."""
+        if event.button() == Qt.LeftButton:
+            # Handle dragging
+            self.last_pos = event.pos()
+            self.dragging = True
+
+        # Handle CTRL + Click (Middle button click for aircraft selection)
+        elif event.button() == Qt.MiddleButton:
+            click_pos = event.pos()
+            for aircraft in self.aircraft_data:
+                lat = aircraft.get("lat")
+                lon = aircraft.get("lon")
+                x, y = self.map_to_radar_coords(lat, lon)
+                x = self.radar_center.x() + (x * self.scale_factor) + self.offset.x()
+                y = self.radar_center.y() - (y * self.scale_factor) + self.offset.y()
+
+                # Check if click is within the circle's radius
+                circle_radius = 15
+                if (click_pos.x() - x) ** 2 + (click_pos.y() - y) ** 2 <= circle_radius ** 2:
+                    # Toggle highlighted state
+                    callsign = aircraft.get("flight")
+                    if callsign:
+                        aircraft["highlighted"] = not aircraft.get("highlighted", False)
+                        self.highlighted_states[callsign] = aircraft["highlighted"]
+                    self.update()  # Refresh the UI
+                    break
+
+   
+
 class DataFetcher(QThread):
     data_fetched = pyqtSignal(list)
 
@@ -416,7 +712,7 @@ class DataFetcher(QThread):
 
             if response.status_code == 200:
                 data = response.json()  # Parse the JSON response
-                print(f"Fetched Data: {data}")  # Debug: Print the data received
+                #print(f"Fetched Data: {data}")  # Debug: Print the data received
                 
                 # Assuming the 'ac' key contains aircraft data
                 aircraft_data = data.get("ac", [])
@@ -446,13 +742,14 @@ class DataFetcher(QThread):
             print(f"Error fetching data: {e}")  # Debug: Print error
             return []
 
-
-
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
+
+
     tracon_config_file = "resources/TraconConfig.json"
+
+
 
     # Initialize and show the TRACON display
     radar_display = TRACONDisplay(tracon_config_file)
