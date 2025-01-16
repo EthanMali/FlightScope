@@ -1,25 +1,14 @@
 import sys
 import math
 import json
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-import tkinter as tk
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog,QMessageBox, QAction
+from PyQt5.QtGui import QPainter, QColor, QPen, QFont,QFontDatabase 
+from PyQt5.QtCore import Qt, QPointF, QTimer
 from collections import deque
 from TraconSelection import TraconSelectionDialog
 from geojsonLoader import GeoJsonLoader
 from DataFetcher import DataFetcher
 import os
-
-
-DCB_COLOR = "#3a3f40"
-BUTTON_STRIP_COLOR = "#5c6769"
-BUTTON_WIDTH = 15
-BUTTON_HEIGHT = 2
-DCB_HEIGHT = 80
-FONT = ("Roboto", 10)
-SCREEN_WIDTH = 800
-
 
 class TRACONDisplay(QMainWindow):
     def __init__(self, tracon_config):
@@ -28,51 +17,21 @@ class TRACONDisplay(QMainWindow):
         self.setCursor(Qt.CrossCursor)
 
        # Load the font
-        font_id = QFontDatabase.addApplicationFont("Resources/fonts/Roboto_Mono/RobotoMono-Bold.ttf")
+        font_id = QFontDatabase.addApplicationFont("Resources/fonts/Roboto_Mono/RobotoMono-VariableFont_wght.ttf")
         if font_id == -1:
             print("Failed to load Roboto Mono font")
         else:
             print("Roboto Mono font loaded successfully")
 
-        font_id_2 = QFontDatabase.addApplicationFont("Resources/fonts/Share_Tech/ShareTech_Regular.ttf")
-        if font_id_2 == -2:
-            print("Failed to load ShareTech font")
-        else:
-            print("ShareTech font loaded successfully")
-
-
         # Initial font size setup (10 is the default)
-        self.starsFont = QFont("ShareTech", 10)
-
-        # Connect the action to a function that changes the font
-
+        self.starsFont = QFont("Roboto Mono", 10)
         
 
         # Set up menu bar
         self.menuBar = self.menuBar()
 
-                # Font size menu
+        # Font size menu
         font_menu = self.menuBar.addMenu("Font Size")
-        fontTypeMenu = self.menuBar.addMenu("Font Type")
-
-        # Create an action for the font type menu
-        self.font_sharetech_action = QAction("ShareTech", self)
-        self.font_default_action = QAction("Default", self)
-
-
-
-        # Add action to the font type menu
-        fontTypeMenu.addAction(self.font_sharetech_action)
-        fontTypeMenu.addAction(self.font_default_action)
-
-
-
-
-        # Connect the action to change self.starsFont instead of the system font
-        self.font_sharetech_action.triggered.connect(lambda: self.set_stars_font("ShareTech", 10))
-        self.font_default_action.triggered.connect(lambda: self.set_stars_font("Roboto Mono", 10))
-
-
 
         # Define actions for different font sizes
         self.font_8_action = QAction("8", self)
@@ -137,11 +96,10 @@ class TRACONDisplay(QMainWindow):
         # Other initialization continues...
 
         self.aircraft_data = []
-        self.highlighted_states = {}        
         # Remove the call to self.load_aircraft_data()
 
         # Initialize the selected TRACON's display
-        version = "v1.2.0"
+        version = "v0.0.0"
         self.setWindowTitle(f"RadarView {version} :: {self.tracon_config['tracon_name']}")
         self.showMaximized()
 
@@ -162,192 +120,6 @@ class TRACONDisplay(QMainWindow):
         self.timer.start(2000)  # Fetch data every 5 seconds
 
         print(f"TRACONDisplay initialized for {self.tracon_config['tracon_name']}.")
-        # Set central widget with layout
-        self.central_widget = QWidget(self)
-        self.setCentralWidget(self.central_widget)
-
-        # Use a vertical layout to stack DCB and radar
-        self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setSpacing(0)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-
-        # DCB Strip on top
-        self.dcbStrip = QWidget(self)
-        self.dcbStrip.setFixedHeight(DCB_HEIGHT)
-        self.dcbStrip.setStyleSheet("""
-            background-color: #004d00;  /* Dark green background */
-            border-bottom: 2px solid #00cc00;  /* Brighter green bottom border */
-        """)
-
-        # Button Strip inside DCB
-        self.ButtonStrip = QWidget(self.dcbStrip)
-        self.ButtonStrip.setStyleSheet("background-color: transparent;")
-        button_layout = QGridLayout(self.ButtonStrip)
-        button_layout.setSpacing(5)
-        self.ButtonStrip.setLayout(button_layout)
-
-        # Initialize button data and create buttons
-        self.buttons_data = self.initialize_buttons_data()
-        self.create_buttons
-
-
-
-
-        # Add widgets to layout
-        self.main_layout.addWidget(self.dcbStrip)      # DCB at the top
-
-    def create_buttons(self, button_layout):
-        # Define the custom layout pattern
-        layout_pattern = [
-            [0],             # 1
-            [0, 1],          # 2
-            [0],             # 1
-            [0, 1],          # 2
-            [0],             # 1
-            [0, 1, 2],       # 222
-            [0, 1, 2, 3, 4, 5, 6],  # 1111111
-            [0, 1],          # 2
-            [0, 1, 2, 3],    # 1111
-            [0, 1],          # 2
-            [0]              # 1
-        ]
-
-        button_index = 0  # Track buttons from buttons_data
-
-        for row, cols in enumerate(layout_pattern):
-            for col in cols:
-                if button_index < len(self.buttons_data):
-                    button_data = self.buttons_data[button_index]
-                    button = QPushButton(button_data["text"], self.ButtonStrip)
-                    button.setStyleSheet(f"""
-                        QPushButton {{
-                            background-color: #007f00;
-                            color: white;
-                            font-size: {FONT[1]}px;
-                            padding: 8px 16px;
-                            border-radius: 8px;
-                            border: 2px solid #00cc00;
-                            box-shadow: 2px 2px 5px #003300;
-                        }}
-                        QPushButton:pressed {{
-                            background-color: #005f00;
-                            border: 2px inset #009900;
-                        }}
-                        QPushButton:hover {{
-                            background-color: #00b300;
-                        }}
-                    """)
-                    button.clicked.connect(button_data["command"])
-                    button_layout.addWidget(button, row, col)
-                    button_index += 1
-
-
-
-
-    def initialize_buttons_data(self):
-        buttons_data = [
-            {"text": "RANGE", "bg": "#3a3f40", "fg": "white", "command": self.button_1_action},
-            {"text": "MAP REPOS", "bg": "#3a3f40", "fg": "white", "command": self.button_2_action},
-            {"text": "UNDO", "bg": "#3a3f40", "fg": "white", "command": self.button_3_action},
-            {"text": "PREF", "bg": "#3a3f40", "fg": "white", "command": self.button_4_action},
-            {"text": "BRITE", "bg": "#3a3f40", "fg": "white", "command": self.button_5_action},
-            {"text": "SAFETY LOGIC", "bg": "#3a3f40", "fg": "white", "command": self.button_6_action},
-            {"text": "TOOLS", "bg": "#3a3f40", "fg": "white", "command": self.button_7_action},
-            {"text": "VECTOR ON/OFF", "bg": "#3a3f40", "fg": "white", "command": self.button_8_action},
-            {"text": "TEMP DATA", "bg": "#3a3f40", "fg": "white", "command": self.button_9_action},
-            {"text": "DB AREA", "bg": "#3a3f40", "fg": "white", "command": self.button_10_action},
-            {"text": "BUTTON", "bg": "#3a3f40", "fg": "white", "command": self.button_1_action},
-            {"text": "BUTTON", "bg": "#3a3f40", "fg": "white", "command": self.button_2_action},
-            {"text": "BUTTON", "bg": "#3a3f40", "fg": "white", "command": self.button_3_action},
-            {"text": "BUTTON", "bg": "#3a3f40", "fg": "white", "command": self.button_4_action},
-            {"text": "BUTTON", "bg": "#3a3f40", "fg": "white", "command": self.button_5_action}
-        ]
-        return buttons_data
-
-    def create_buttons(self):
-        for i, button_data in enumerate(self.buttons_data):
-            button = QPushButton(button_data["text"], self.ButtonStrip)
-            button.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {button_data["bg"]};
-                    color: {button_data["fg"]};
-                    font-size: {FONT[1]}px;
-                    padding: 6px 12px;
-                    border-radius: 5px;
-                }}
-                QPushButton:hover {{
-                    background-color: #555;
-                }}
-            """)
-            button.clicked.connect(button_data["command"])
-            self.ButtonStrip.layout().addWidget(button, i // 5, i % 5)  # Access layout directly
-
-    def button_1_action(self):
-        print("RANGE button clicked")
-
-    def button_2_action(self):
-        print("MAP REPOS button clicked")
-
-    def button_3_action(self):
-        print("UNDO button clicked")
-
-    def button_4_action(self):
-        print("PREF button clicked")
-
-    def button_5_action(self):
-        print("BRITE button clicked")
-
-    def button_6_action(self):
-        print("SAFETY LOGIC button clicked")
-
-    def button_7_action(self):
-        print("TOOLS button clicked")
-
-    def button_8_action(self):
-        print("VECTOR ON/OFF button clicked")
-
-    def button_9_action(self):
-        print("TEMP DATA button clicked")
-
-    def button_10_action(self):
-        print("DB AREA button clicked")
-
-    def reset_view_action(self):
-        self.offset = QPointF(0, 0)
-        self.scale_factor = 1.0
-        self.update()
-        print("View reset")
-
-    def zoom_in_action(self):
-        self.scale_factor *= 1.2
-        self.update()
-        print("Zoomed in")
-
-    def zoom_out_action(self):
-        self.scale_factor /= 1.2
-        self.update()
-        print("Zoomed out")
-
-    def refresh_data_action(self):
-        self.start_fetching_data()
-        print("Data refreshed")
-
-    def exit_application_action(self):
-        print("Exiting application")
-        sys.exit()
-
-
-
-
-    def set_stars_font(self, font_name, font_size):
-        font = QFont(font_name, font_size)
-        
-        
-        self.starsFont = font
-
-        self.update
-
-
 
 
     def load_tracon_config(self, config_file):
@@ -382,8 +154,7 @@ class TRACONDisplay(QMainWindow):
 
     def draw_geojson_lines(self, painter):
         """Draw lines from the GeoJSON data with zoom and offset adjustments."""
-        pen = QPen(QColor(255, 255, 255, 127))  # White lines with 50% transparency (alpha = 127)
-        pen.setWidth(1)
+        pen = QPen(QColor(0, 0, 0, 127))  # White lines with 50% transparency (alpha = 127)
         painter.setPen(pen)
 
         # Draw each line from the GeoJSON data
@@ -433,9 +204,6 @@ class TRACONDisplay(QMainWindow):
                 self.aircraft_positions[aircraft_id] = deque(maxlen=8)  # Limit to last 8 positions
             self.aircraft_positions[aircraft_id].append((lat, lon))
 
-            # Restore highlighted state
-            highlighted = self.highlighted_states.get(aircraft_id, False)
-            aircraft["highlighted"] = highlighted
 
         # Update radar display
         self.update()
@@ -450,23 +218,14 @@ class TRACONDisplay(QMainWindow):
     def paintEvent(self, event):
         """Handle paint event to render radar, geoJSON, and aircraft trails."""
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(0, 0, 0))  # Black background
+        painter.fillRect(self.rect(), QColor(4,92,116))  # Black background
 
         # Apply updated font size before drawing
         painter.setFont(self.starsFont)  # Apply updated font
 
         self.draw_geojson_lines(painter)
-        self.draw_radar(painter)
         self.draw_aircraft(painter)
 
-
-
-    def draw_radar(self, painter):
-        pen = QPen(QColor(200, 200, 200, 100))  # Grey-white rings
-        pen.setWidth(1)
-        painter.setPen(pen)
-        for i in range(1, 10):
-            painter.drawEllipse(self.radar_center + self.offset, i * 80 * self.scale_factor, i * 80 * self.scale_factor)
 
 
     def draw_aircraft(self, painter):
@@ -501,23 +260,10 @@ class TRACONDisplay(QMainWindow):
                 if lat is None or lon is None:
                     continue
 
-                # Draw aircraft trail
-                self.draw_aircraft_trail(aircraft, painter)
-
                 # Map coordinates to radar screen
                 x, y = self.map_to_radar_coords(lat, lon)
                 x = self.radar_center.x() + (x * self.scale_factor) + self.offset.x()
                 y = self.radar_center.y() - (y * self.scale_factor) + self.offset.y()
-
-                # **Prediction Logic:**
-                # Calculate the predicted position in 1 minute
-                predicted_lat, predicted_lon = self.predict_position(lat, lon, track, speed)
-
-                # Map predicted coordinates to radar screen
-                predicted_x, predicted_y = self.map_to_radar_coords(predicted_lat, predicted_lon)
-                predicted_x = self.radar_center.x() + (predicted_x * self.scale_factor) + self.offset.x()
-                predicted_y = self.radar_center.y() - (predicted_y * self.scale_factor) + self.offset.y()
-
 
                 # Calculate leader line endpoint
                 leader_end_x = x  # Vertical line aligns with circle center
@@ -525,13 +271,7 @@ class TRACONDisplay(QMainWindow):
 
 
                 # Inside your drawing logic for aircraft, check if the aircraft is highlighted
-                highlighted = aircraft.get("highlighted", False)
-
-                # If highlighted, use a different text color
-                if highlighted:
-                    text_color = QColor(10,186,187)  # Blue color for highlighted aircraft
-                else:
-                    text_color = QColor(255, 255, 255)  # White color for non-highlighted aircraft
+                text_color = QColor(255, 255, 255)  # White color for non-highlighted aircraft
 
                 painter.setFont(self.starsFont)  # Apply Roboto Mono font
                 painter.setPen(text_color)
@@ -547,11 +287,6 @@ class TRACONDisplay(QMainWindow):
                 painter.drawText(QPointF(leader_end_x + 5, leader_end_y + 10), f"{alt // 100:03} {speed}")
 
 
-
-                # Draw the line from the blue aircraft dot to the predicted position
-                painter.setPen(QPen(QColor(255, 255, 255), 1))  # White line with thickness 1
-                painter.drawLine(QPointF(x, y), QPointF(predicted_x, predicted_y))  # Line from aircraft to predicted position
-
                 circle_radius = 6
                 painter.setBrush(QColor(31, 122, 255, 255))  # Blue color for aircraft
                 painter.setPen(Qt.NoPen)
@@ -563,69 +298,9 @@ class TRACONDisplay(QMainWindow):
 
             except Exception as e:
                 print(f"Error drawing aircraft: {e}")
-                
-    def predict_position(self, lat, lon, heading, speed):
-        # Earth's radius in meters
-        R = 6371000  
-        
-        # Convert speed from knots to meters per second
-        speed_mps = speed * 0.514444
 
-        # Distance traveled in 1 minute
-        distance = speed_mps * 60  
 
-        # Convert heading to radians
-        heading_rad = math.radians(heading)
-
-        # Convert latitude and longitude to radians
-        lat_rad = math.radians(lat)
-        lon_rad = math.radians(lon)
-
-        # Predict new latitude
-        predicted_lat_rad = math.asin(
-            math.sin(lat_rad) * math.cos(distance / R) +
-            math.cos(lat_rad) * math.sin(distance / R) * math.cos(heading_rad)
-        )
-
-        # Predict new longitude
-        predicted_lon_rad = lon_rad + math.atan2(
-            math.sin(heading_rad) * math.sin(distance / R) * math.cos(lat_rad),
-            math.cos(distance / R) - math.sin(lat_rad) * math.sin(predicted_lat_rad)
-        )
-
-        # Convert back to degrees
-        predicted_lat = math.degrees(predicted_lat_rad)
-        predicted_lon = math.degrees(predicted_lon_rad)
-
-        return predicted_lat, predicted_lon
-
-    def draw_aircraft_trail(self, aircraft, painter):
-        """Draw the trail for the aircraft."""
-        aircraft_id = aircraft.get("flight", "N/A")
-        if aircraft_id not in self.aircraft_positions:
-            return
-
-        # Get the last positions of the aircraft in reverse order (newest first)
-        positions = list(self.aircraft_positions[aircraft_id])[::-1]
-
-        # Draw circles for the trail
-        for i, (lat, lon) in enumerate(positions):
-            # Map the coordinates to radar screen
-            x, y = self.map_to_radar_coords(lat, lon)
-            x = self.radar_center.x() + (x * self.scale_factor) + self.offset.x()
-            y = self.radar_center.y() - (y * self.scale_factor) + self.offset.y()
-
-            # Adjust color intensity for fading effect
-            # The first circle is fully blue, and the color fades with each older position
-            alpha_value = max(255 - i * 30, 50)  # Fade effect, stops at a certain opacity
-            color = QColor(27,110,224, alpha_value)  # Blue with fading alpha
-
-            painter.setBrush(color)
-            painter.setPen(Qt.NoPen)
-
-            # Draw the trail circle
-            painter.drawEllipse(QPointF(x, y), 4, 4)  # Smaller circles for the trail
-
+  
     def map_to_radar_coords(self, lat, lon):
         """Map latitude and longitude to radar coordinates."""
         
@@ -649,20 +324,7 @@ class TRACONDisplay(QMainWindow):
         x = (lon - center_lon) * scale * math.cos(math.radians(center_lat))  # Adjust for latitude
         y = (lat - center_lat) * scale
         return x, y
-
-
-        
-    def assign_sector(self, lat, lon, alt):
-        """Assign aircraft to a TRACON sector based on position or altitude."""
-        if alt < 10000:
-            return "F"
-        elif 10000 <= alt < 20000:
-            return "V"
-        elif 20000 <= alt < 30000:
-            return "A"
-        else:
-            return "H"
-
+    
 
     def haversine(self, lat1, lon1, lat2, lon2):
         """Calculate the distance in meters between two lat/lon points."""
@@ -678,6 +340,9 @@ class TRACONDisplay(QMainWindow):
 
         distance = R * c  # Distance in meters
         return distance
+    
+
+
     
     def mouseMoveEvent(self, event):
         """Handle mouse move event for dragging."""
@@ -767,10 +432,86 @@ class TRACONDisplay(QMainWindow):
 
 
 
+import requests
+from PyQt5.QtCore import QThread, pyqtSignal
+
+class DataFetcher(QThread):
+    data_fetched = pyqtSignal(list)
+
+    def __init__(self, lat, lon, dist):
+        super().__init__()
+        self.lat = lat
+        self.lon = lon
+        self.dist = dist
+
+    def run(self):
+        aircraft_data = self.fetch_aircraft_data()
+        self.data_fetched.emit(aircraft_data)
+
+    def fetch_aircraft_data(self):
+        url = f"https://api.adsb.lol/v2/lat/{self.lat}/lon/{self.lon}/dist/{self.dist}"
+        try:
+            print(f"Fetching data from {url}")  # Debug: Print URL
+            response = requests.get(url)
+            print(f"Response Status Code: {response.status_code}")  # Debug: Print status code
+
+            if response.status_code == 200:
+                data = response.json()  # Parse the JSON response
+                #print(f"Fetched Data: {data}")  # Debug: Print the data received
+                
+                # Assuming the 'ac' key contains aircraft data
+                aircraft_data = data.get("ac", [])
+                if not aircraft_data:
+                    print("No aircraft data available.")
+                    return []
+                
+                # Map relevant fields to be used in the display
+                parsed_data = []
+                for ac in aircraft_data:
+                    parsed_data.append({
+                        'hex': ac.get('hex'),
+                        'flight': ac.get('flight'),
+                        'lat': ac.get('lat'),
+                        'lon': ac.get('lon'),
+                        'alt': ac.get('alt_baro'),  # Altitude in Barometric
+                        'gs': ac.get('gs'),  # Ground speed
+                        'track': ac.get('track'),
+                        'mag_heading': ac.get('mag_heading'),
+                        'emergency': ac.get('emergency'),
+                        'type' : ac.get('t')
+                    })
+                    
+                return parsed_data
+            else:
+                print(f"Error: Received status code {response.status_code}")  # Debug: Print error status code
+                return []
+        except Exception as e:
+            print(f"Error fetching data: {e}")  # Debug: Print error
+            return []
+        
+# GeoJson Loader to load GeoJSON data
+class GeoJsonLoader:
+    def __init__(self):
+        self.geojson_data = {"type": "FeatureCollection", "features": []}
+
+    def load(self, geojson_data):
+        self.geojson_data = geojson_data
+        # After loading the GeoJSON data
+        #print("Loaded GeoJSON data:", geojson_data)
+
+
+    def get_lines(self):
+        return [
+            feature for feature in self.geojson_data["features"]
+            if feature["geometry"]["type"] == "LineString"
+        ]
+
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    tracon_config_file = r"Resources/.TraconConfig"
+    tracon_config_file = r"Resources/.AsdeConfig"
 
     # Initialize and show the TRACON display
     radar_display = TRACONDisplay(tracon_config_file)
