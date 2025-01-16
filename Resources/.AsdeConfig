@@ -1,0 +1,31 @@
+{
+  "C90": {
+    "tracon_name": "C90 (CHICAGO) TRACON",
+    "geojson_file": "Resources/Cabs/C90.geojson",
+    "radar_settings": {
+      "center": [400, 400],
+      "scale_factor": 1.0,
+      "lat_lon": [41.978611, -87.904724]
+    }
+  },
+  "SGF": {
+    "tracon_name": "SGF TRACON",
+    "geojson_file": "Resources/tracons/SGF.geojson",
+    "radar_settings": {
+      "center": [400, 400],
+      "scale_factor": 1.0,
+      "lat_lon": [37.242404, -93.387944]
+    }
+  },
+  "P80": {
+    "tracon_name": "P80 (PORTLAND) TRACON",
+    "geojson_file": "Resources/tracons/P80.geojson",
+    "radar_settings": {
+      "center": [400, 400],
+      "scale_factor": 1.0,
+      "lat_lon": [45.590833, -122.597940]
+    }
+  }
+}
+
+
